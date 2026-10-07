@@ -1,0 +1,461 @@
+{
+  "database": {
+    "advisory-count": 1293,
+    "last-commit": null,
+    "last-updated": null
+  },
+  "lockfile": {
+    "dependency-count": 12
+  },
+  "settings": {
+    "ignore": [],
+    "informational_warnings": [
+      "unmaintained",
+      "unsound",
+      "notice"
+    ],
+    "severity": null,
+    "target_arch": [],
+    "target_os": []
+  },
+  "vulnerabilities": {
+    "count": 3,
+    "found": true,
+    "list": [
+      {
+        "advisory": {
+          "aliases": [
+            "CVE-2020-26235",
+            "GHSA-wcg3-cvx6-7396"
+          ],
+          "categories": [
+            "code-execution",
+            "memory-corruption"
+          ],
+          "collection": "crates",
+          "cvss": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+          "date": "2020-11-18",
+          "description": "Fixture text: see the advisory.",
+          "expect-deleted": false,
+          "id": "RUSTSEC-2020-0071",
+          "informational": null,
+          "keywords": [
+            "segfault"
+          ],
+          "license": "CC0-1.0",
+          "package": "time",
+          "references": [],
+          "related": [],
+          "source": null,
+          "title": "Potential segfault in the time crate",
+          "url": "https://github.com/time-rs/time/issues/293",
+          "withdrawn": null
+        },
+        "affected": {
+          "arch": [],
+          "functions": {
+            "time::OffsetDateTime::now_local": [
+              "<0.2.23"
+            ],
+            "time::OffsetDateTime::try_now_local": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::current_local_offset": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::local_offset_at": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::try_current_local_offset": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::try_local_offset_at": [
+              "<0.2.23"
+            ],
+            "time::at": [
+              "^0.1"
+            ],
+            "time::at_utc": [
+              "^0.1"
+            ],
+            "time::now": [
+              "^0.1"
+            ]
+          },
+          "os": [
+            "linux",
+            "redox",
+            "solaris",
+            "android",
+            "ios",
+            "macos",
+            "netbsd",
+            "openbsd",
+            "freebsd"
+          ]
+        },
+        "package": {
+          "checksum": "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438",
+          "dependencies": [
+            {
+              "name": "libc",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.2.190"
+            },
+            {
+              "name": "winapi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.3.9"
+            }
+          ],
+          "name": "time",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.1.43"
+        },
+        "versions": {
+          "patched": [
+            ">=0.2.23"
+          ],
+          "unaffected": [
+            "=0.2.0",
+            "=0.2.1",
+            "=0.2.2",
+            "=0.2.3",
+            "=0.2.4",
+            "=0.2.5",
+            "=0.2.6"
+          ]
+        }
+      },
+      {
+        "advisory": {
+          "aliases": [
+            "CVE-2020-26235",
+            "GHSA-wcg3-cvx6-7396"
+          ],
+          "categories": [
+            "code-execution",
+            "memory-corruption"
+          ],
+          "collection": "crates",
+          "cvss": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+          "date": "2020-11-18",
+          "description": "Fixture text: see the advisory.",
+          "expect-deleted": false,
+          "id": "RUSTSEC-2020-0071",
+          "informational": null,
+          "keywords": [
+            "segfault"
+          ],
+          "license": "CC0-1.0",
+          "package": "time",
+          "references": [],
+          "related": [],
+          "source": null,
+          "title": "Potential segfault in the time crate",
+          "url": "https://github.com/time-rs/time/issues/293",
+          "withdrawn": null
+        },
+        "affected": {
+          "arch": [],
+          "functions": {
+            "time::OffsetDateTime::now_local": [
+              "<0.2.23"
+            ],
+            "time::OffsetDateTime::try_now_local": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::current_local_offset": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::local_offset_at": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::try_current_local_offset": [
+              "<0.2.23"
+            ],
+            "time::UtcOffset::try_local_offset_at": [
+              "<0.2.23"
+            ],
+            "time::at": [
+              "^0.1"
+            ],
+            "time::at_utc": [
+              "^0.1"
+            ],
+            "time::now": [
+              "^0.1"
+            ]
+          },
+          "os": [
+            "linux",
+            "redox",
+            "solaris",
+            "android",
+            "ios",
+            "macos",
+            "netbsd",
+            "openbsd",
+            "freebsd"
+          ]
+        },
+        "package": {
+          "checksum": "0000000000000000000000000000000000000000000000000000000000000022",
+          "dependencies": [
+            {
+              "name": "libc",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.2.190"
+            },
+            {
+              "name": "winapi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.3.9"
+            }
+          ],
+          "name": "time",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.2.22"
+        },
+        "versions": {
+          "patched": [
+            ">=0.2.23"
+          ],
+          "unaffected": [
+            "=0.2.0",
+            "=0.2.1",
+            "=0.2.2",
+            "=0.2.3",
+            "=0.2.4",
+            "=0.2.5",
+            "=0.2.6"
+          ]
+        }
+      },
+      {
+        "advisory": {
+          "aliases": [
+            "CVE-2023-49092",
+            "GHSA-c38w-74pg-36hr"
+          ],
+          "categories": [
+            "crypto-failure"
+          ],
+          "collection": "crates",
+          "cvss": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+          "date": "2023-11-22",
+          "description": "Fixture text: see the advisory.",
+          "expect-deleted": false,
+          "id": "RUSTSEC-2023-0071",
+          "informational": null,
+          "keywords": [
+            "cryptography"
+          ],
+          "license": "CC0-1.0",
+          "package": "rsa",
+          "references": [],
+          "related": [],
+          "source": null,
+          "title": "Marvin Attack: potential key recovery through timing sidechannels",
+          "url": "https://people.redhat.com/~hkario/marvin/",
+          "withdrawn": null
+        },
+        "affected": null,
+        "package": {
+          "checksum": "5d0e5124fcb30e76a7e79bfee683a2746db83784b86289f6251b54b7950a0dfc",
+          "dependencies": [],
+          "name": "rsa",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.9.6"
+        },
+        "versions": {
+          "patched": [],
+          "unaffected": []
+        }
+      }
+    ]
+  },
+  "warnings": {
+    "unmaintained": [
+      {
+        "advisory": {
+          "aliases": [],
+          "categories": [],
+          "collection": "crates",
+          "cvss": null,
+          "date": "2021-08-18",
+          "description": "Fixture text: see the advisory.",
+          "expect-deleted": false,
+          "id": "RUSTSEC-2021-0139",
+          "informational": "unmaintained",
+          "keywords": [],
+          "license": "CC0-1.0",
+          "package": "ansi_term",
+          "references": [],
+          "related": [],
+          "source": null,
+          "title": "ansi_term is Unmaintained",
+          "url": "https://github.com/ogham/rust-ansi-term/issues/72",
+          "withdrawn": null
+        },
+        "affected": null,
+        "kind": "unmaintained",
+        "package": {
+          "checksum": "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2",
+          "dependencies": [
+            {
+              "name": "winapi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.3.9"
+            }
+          ],
+          "name": "ansi_term",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.12.1"
+        },
+        "versions": {
+          "patched": [],
+          "unaffected": []
+        }
+      },
+      {
+        "advisory": {
+          "aliases": [],
+          "categories": [],
+          "collection": "crates",
+          "cvss": null,
+          "date": "2024-09-25",
+          "description": "Fixture text: see the advisory.",
+          "expect-deleted": false,
+          "id": "RUSTSEC-2024-0375",
+          "informational": "unmaintained",
+          "keywords": [],
+          "license": "CC0-1.0",
+          "package": "atty",
+          "references": [],
+          "related": [],
+          "source": null,
+          "title": "`atty` is unmaintained",
+          "url": "https://github.com/softprops/atty/issues/57",
+          "withdrawn": null
+        },
+        "affected": null,
+        "kind": "unmaintained",
+        "package": {
+          "checksum": "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8",
+          "dependencies": [
+            {
+              "name": "hermit-abi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.1.19"
+            },
+            {
+              "name": "libc",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.2.190"
+            },
+            {
+              "name": "winapi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.3.9"
+            }
+          ],
+          "name": "atty",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.2.14"
+        },
+        "versions": {
+          "patched": [],
+          "unaffected": []
+        }
+      }
+    ],
+    "unsound": [
+      {
+        "advisory": {
+          "aliases": [
+            "GHSA-g98v-hv3f-hcfr"
+          ],
+          "categories": [],
+          "collection": "crates",
+          "cvss": null,
+          "date": "2021-07-04",
+          "description": "Fixture text: see the advisory.",
+          "expect-deleted": false,
+          "id": "RUSTSEC-2021-0145",
+          "informational": "unsound",
+          "keywords": [
+            "unaligned-read"
+          ],
+          "license": "CC0-1.0",
+          "package": "atty",
+          "references": [
+            "https://github.com/softprops/atty/pull/51",
+            "https://github.com/softprops/atty/issues/57"
+          ],
+          "related": [],
+          "source": null,
+          "title": "Potential unaligned read",
+          "url": "https://github.com/softprops/atty/issues/50",
+          "withdrawn": null
+        },
+        "affected": {
+          "arch": [],
+          "functions": {},
+          "os": [
+            "windows"
+          ]
+        },
+        "kind": "unsound",
+        "package": {
+          "checksum": "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8",
+          "dependencies": [
+            {
+              "name": "hermit-abi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.1.19"
+            },
+            {
+              "name": "libc",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.2.190"
+            },
+            {
+              "name": "winapi",
+              "source": "registry+https://github.com/rust-lang/crates.io-index",
+              "version": "0.3.9"
+            }
+          ],
+          "name": "atty",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.2.14"
+        },
+        "versions": {
+          "patched": [],
+          "unaffected": []
+        }
+      }
+    ],
+    "yanked": [
+      {
+        "advisory": null,
+        "affected": null,
+        "kind": "yanked",
+        "package": {
+          "checksum": "9aeec81361cbe5564f44e79538fc112002f70a448966f9160591c2bd5706dfad",
+          "name": "cfg-if",
+          "replace": null,
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "1.0.2"
+        },
+        "versions": null
+      }
+    ]
+  }
+}
