@@ -1,6 +1,6 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: 2025 The Linux Foundation
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
 
 # Action test/validation workflow
 name: "Test GitHub Action 🧪"
@@ -20,28 +20,25 @@ concurrency:
 permissions: {}
 
 jobs:
-  ### Test the GitHub Action in this Repository ###
-  tests:
-    name: "Test local GitHub Action"
+  unit-tests:
+    name: "Unit tests (bats)"
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    timeout-minutes: 10 # Increase this timeout value as needed
+    timeout-minutes: 10
     steps:
-      # Load the egress allow-list out-of-band from the
-      # organisation's .github repository and publish it as
-      # $CONNECTION_ALLOW_LIST for the harden-runner step below.
+      # Load the egress allow-list from the organisation's .github
+      # repository as $CONNECTION_ALLOW_LIST for harden-runner.
       # yamllint disable-line rule:line-length
       - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
         with:
-          config: '@18d9c4446bea555d0783e850f6d295f844fe8f67'  # v0.1.1
+          config: '@538904e241556d101fb908b50e2a2965fa0346cf'  # v0.16.6
 
-      # Harden the runner with the just-loaded allow-list.
-      - name: 'Harden runner (block)'
+      - name: "Harden runner (block)"
         # yamllint disable-line rule:line-length
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed  # v2.22.0
         with:
-          egress-policy: 'block'
+          egress-policy: "block"
           allowed-endpoints: >
             ${{ env.CONNECTION_ALLOW_LIST }}
 
@@ -50,41 +47,550 @@ jobs:
         with:
           persist-credentials: false
 
-      # Perform setup prior to running test(s)
-      - name: "Testing setup step"
+      - name: "Install bats"
         shell: bash
         run: |
-          # Testing setup step
-          echo "Testing setup step"
-          echo "Testing setup step/summary output" >> "$GITHUB_STEP_SUMMARY"
+          # Install bats
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bats
+          bats --version
 
-      - name: "Running local action: ${{ github.repository }}"
+      - name: "Run bats tests"
+        shell: bash
+        run: |
+          # Run bats tests
+          bats tests/
+
+  test-rust-project:
+    name: "Audit test-rust-project"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
+        with:
+          config: '@538904e241556d101fb908b50e2a2965fa0346cf'  # v0.16.6
+
+      - name: "Harden runner (block)"
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed  # v2.22.0
+        with:
+          egress-policy: "block"
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Checkout repository"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: "Checkout test-rust-project"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: "lfreleng-actions/test-rust-project"
+          ref: "5db6f8f6624e676d1d76f8db02a0253fee39900c"  # v0.0.1
+          path: "test-rust-project"
+          persist-credentials: false
+
+      - name: "Audit with defaults, lockfile required"
+        id: defaults
         uses: $/
         with:
-          input: "test input 💬"
+          path_prefix: "test-rust-project"
+          lockfile_required: "true"
+          artefact_name: "audit-test-rust-project"
 
-      - name: "Validated local action: ${{ github.repository }}"
+      # Reports in the workspace, below path_prefix.
+      - name: "Audit with cargo-deny"
+        id: deny
+        uses: $/
+        with:
+          path_prefix: "test-rust-project"
+          deny_enabled: "true"
+          deny_checks: "advisories bans sources"
+          artefact_name: "audit-test-rust-project-deny"
+          artefact_path: "audit-reports"
+          toolchain: "stable"
+
+      # Without a deny.toml, cargo-deny's licence allow-list is empty.
+      - name: "cargo-deny licenses without a config [expected failure]"
+        id: licenses
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "test-rust-project"
+          deny_enabled: "true"
+          deny_checks: "licenses"
+          artefact_name: "audit-test-rust-project-licenses"
+
+      # No cargo-audit 0.0.1 release exists, so the install fails.
+      - name: "Tool install failure [expected failure]"
+        id: install
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "test-rust-project"
+          cargo_audit_version: "0.0.1"
+
+      - name: "Tool install failure, permitted"
+        id: install_permitted
+        uses: $/
+        with:
+          path_prefix: "test-rust-project"
+          cargo_audit_version: "0.0.1"
+          permit_fail: "true"
+
+      # The defaults step above already uploaded this artefact name, so
+      # the upload fails; only permit_fail lets the action pass.
+      - name: "Duplicate artefact name [expected failure]"
+        id: duplicate
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "test-rust-project"
+          artefact_name: "audit-test-rust-project"
+
+      - name: "Duplicate artefact name, permitted"
+        id: dup_permitted
+        uses: $/
+        with:
+          path_prefix: "test-rust-project"
+          artefact_name: "audit-test-rust-project"
+          permit_fail: "true"
+
+      - name: "Verify outcomes"
         shell: bash
         env:
-          REPO: ${{ github.repository }}
+          DEFAULTS_STEP: ${{ steps.defaults.outcome }}
+          DEFAULTS_AUDIT: ${{ steps.defaults.outputs.audit_outcome }}
+          DEFAULTS_COUNT: ${{ steps.defaults.outputs.vulnerability_count }}
+          DEFAULTS_DENY: ${{ steps.defaults.outputs.deny_outcome }}
+          DEFAULTS_REPORT: ${{ steps.defaults.outputs.report_path }}
+          DEFAULTS_DIR: ${{ steps.defaults.outputs.artefact_path }}
+          DEFAULTS_NAME: ${{ steps.defaults.outputs.artefact_name }}
+          DEFAULTS_TOOLCHAIN: ${{ steps.defaults.outputs.toolchain }}
+          DEFAULTS_KIND: ${{ steps.defaults.outputs.toolchain_kind }}
+          DEFAULTS_CARGO: ${{ steps.defaults.outputs.cargo_version }}
+          DEFAULTS_RUSTC: ${{ steps.defaults.outputs.rustc_version }}
+          DENY_STEP: ${{ steps.deny.outcome }}
+          DENY_TOOLCHAIN: ${{ steps.deny.outputs.toolchain }}
+          DENY_KIND: ${{ steps.deny.outputs.toolchain_kind }}
+          DENY_CARGO: ${{ steps.deny.outputs.cargo_version }}
+          DENY_DENY: ${{ steps.deny.outputs.deny_outcome }}
+          DENY_DIR: ${{ steps.deny.outputs.artefact_path }}
+          DENY_REPORT: ${{ steps.deny.outputs.deny_report_path }}
+          LICENSES_STEP: ${{ steps.licenses.outcome }}
+          LICENSES_AUDIT: ${{ steps.licenses.outputs.audit_outcome }}
+          LICENSES_DENY: ${{ steps.licenses.outputs.deny_outcome }}
+          LICENSES_DIR: ${{ steps.licenses.outputs.artefact_path }}
+          LICENSES_REPORT: ${{ steps.licenses.outputs.deny_report_path }}
+          INSTALL_STEP: ${{ steps.install.outcome }}
+          INSTALL_AUDIT: ${{ steps.install.outputs.audit_outcome }}
+          INSTALL_DENY: ${{ steps.install.outputs.deny_outcome }}
+          INSTALL_DIR: ${{ steps.install.outputs.artefact_path }}
+          PERMITTED_STEP: ${{ steps.install_permitted.outcome }}
+          PERMITTED_AUDIT: ${{ steps.install_permitted.outputs.audit_outcome }}
+          PERMITTED_DENY: ${{ steps.install_permitted.outputs.deny_outcome }}
+          DUPLICATE_STEP: ${{ steps.duplicate.outcome }}
+          DUPLICATE_AUDIT: ${{ steps.duplicate.outputs.audit_outcome }}
+          DUPLICATE_NAME: ${{ steps.duplicate.outputs.artefact_name }}
+          DUP_OK_STEP: ${{ steps.dup_permitted.outcome }}
+          DUP_OK_AUDIT: ${{ steps.dup_permitted.outputs.audit_outcome }}
+          DUP_OK_NAME: ${{ steps.dup_permitted.outputs.artefact_name }}
         run: |
-          # Local action validation
-          echo "Validated local action: $REPO"
-          echo "Validation step summary output" >> "$GITHUB_STEP_SUMMARY"
+          # Verify outcomes
+          failed=0
+          expect() {
+            if [ "$2" != "$3" ]; then
+              echo "::error::$1: expected '$3', got '$2'"
+              failed=1
+            fi
+          }
+          expect "defaults step" "$DEFAULTS_STEP" success
+          expect "defaults audit_outcome" "$DEFAULTS_AUDIT" passed
+          expect "defaults vulnerability_count" "$DEFAULTS_COUNT" 0
+          expect "defaults deny_outcome" "$DEFAULTS_DENY" skipped
+          case "$DEFAULTS_TOOLCHAIN" in
+            stable-*) ;;
+            *)
+              echo "::error::defaults toolchain is not the runner's stable"
+              failed=1
+              ;;
+          esac
+          expect "defaults toolchain_kind" "$DEFAULTS_KIND" channel
+          version_re='^[0-9]+\.[0-9]+\.[0-9]+$'
+          if [[ ! "$DEFAULTS_CARGO" =~ $version_re ]] \
+            || [[ ! "$DEFAULTS_RUSTC" =~ $version_re ]]; then
+            echo "::error::defaults cargo_version or rustc_version is unset"
+            failed=1
+          fi
+          expect "deny toolchain" "$DENY_TOOLCHAIN" stable
+          expect "deny toolchain_kind" "$DENY_KIND" channel
+          expect "deny cargo_version" "$DENY_CARGO" "$DEFAULTS_CARGO"
+          if ! jq -e '.vulnerabilities.count == 0' "$DEFAULTS_REPORT" \
+            > /dev/null; then
+            echo "::error::defaults report_path is not a clean report"
+            failed=1
+          fi
+          case "$DEFAULTS_DIR" in
+            "$RUNNER_TEMP"/*) ;;
+            *)
+              echo "::error::defaults artefact_path is not under RUNNER_TEMP"
+              failed=1
+              ;;
+          esac
+          expect "defaults report_path" "$DEFAULTS_REPORT" \
+            "$DEFAULTS_DIR/cargo-audit.json"
+          expect "defaults artefact_name" "$DEFAULTS_NAME" \
+            audit-test-rust-project
+          expect "deny step" "$DENY_STEP" success
+          expect "deny deny_outcome" "$DENY_DENY" passed
+          expect "deny artefact_path" "$DENY_DIR" \
+            "$GITHUB_WORKSPACE/test-rust-project/audit-reports"
+          expect "deny deny_report_path" "$DENY_REPORT" \
+            "$DENY_DIR/cargo-deny.jsonl"
+          if [ ! -s "$DENY_DIR/cargo-deny.txt" ]; then
+            echo "::error::deny wrote no readable cargo-deny report"
+            failed=1
+          fi
+          expect "licenses step" "$LICENSES_STEP" failure
+          expect "licenses audit_outcome" "$LICENSES_AUDIT" passed
+          expect "licenses deny_outcome" "$LICENSES_DENY" failed
+          expect "licenses deny_report_path" "$LICENSES_REPORT" \
+            "$LICENSES_DIR/cargo-deny.jsonl"
+          expect "install step" "$INSTALL_STEP" failure
+          expect "install audit_outcome" "$INSTALL_AUDIT" failed
+          expect "install deny_outcome" "$INSTALL_DENY" skipped
+          expect "install artefact_path" "$INSTALL_DIR" ""
+          expect "permitted install step" "$PERMITTED_STEP" success
+          expect "permitted install audit_outcome" "$PERMITTED_AUDIT" failed
+          expect "permitted install deny_outcome" "$PERMITTED_DENY" skipped
+          # The audits pass, so only the upload can fail these steps.
+          expect "duplicate step" "$DUPLICATE_STEP" failure
+          expect "duplicate audit_outcome" "$DUPLICATE_AUDIT" passed
+          expect "duplicate artefact_name" "$DUPLICATE_NAME" \
+            audit-test-rust-project
+          expect "permitted duplicate step" "$DUP_OK_STEP" success
+          expect "permitted duplicate audit_outcome" \
+            "$DUP_OK_AUDIT" passed
+          expect "permitted duplicate artefact_name" "$DUP_OK_NAME" \
+            audit-test-rust-project
+          exit "$failed"
 
+  test-vulnerable-fixture:
+    name: "Audit a vulnerable fixture"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
       # yamllint disable-line rule:line-length
-      - name: "Running local action: ${{ github.repository }} [Override Failure]"
-        uses: $/
-        id: failure
-        continue-on-error: true
+      - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
         with:
-          invalid_input: "Some garbage"
+          config: '@538904e241556d101fb908b50e2a2965fa0346cf'  # v0.16.6
 
-      # Failure testing is also important
-      - name: "Error if step above did NOT fail"
-        if: steps.failure.outcome == 'success'
+      - name: "Harden runner (block)"
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed  # v2.22.0
+        with:
+          egress-policy: "block"
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Checkout repository"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # time 0.1.43 carries RUSTSEC-2020-0071 (a vulnerability) and
+      # ansi_term 0.12.1 RUSTSEC-2021-0139 (unmaintained). 'locked'
+      # commits a Cargo.lock; 'unlocked' has none.
+      - name: "Generate fixtures"
         shell: bash
         run: |
-          # Error if step above did NOT fail
-          echo "Error: previous test step did NOT fail ❌"
-          exit 1
+          # Generate fixtures
+          set -euo pipefail
+          suffix="$(od -An -N4 -tx4 /dev/urandom | tr -d ' \n')"
+          name="lfreleng-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${suffix}"
+          mkdir -p locked/src
+          printf '%s\n' '[package]' "name = \"$name\"" 'version = "0.1.0"' \
+            'edition = "2021"' 'license = "Apache-2.0"' 'publish = false' '' \
+            '[dependencies]' 'time = "=0.1.43"' 'ansi_term = "=0.12.1"' \
+            > locked/Cargo.toml
+          printf 'fn main() {}\n' > locked/src/main.rs
+          printf '%s\n' '# time 0.1 has no fixed release' 'RUSTSEC-2020-0071' \
+            > locked/audit-allow.txt
+          cp -R locked unlocked
+          (cd locked && cargo generate-lockfile)
+          for dir in locked unlocked; do
+            git -C "$dir" init -q
+            git -C "$dir" add -A
+            git -C "$dir" -c user.name=CI -c user.email=ci@example.org \
+              commit -q -m "Fixture"
+          done
+          echo "Fixture crate: $name"
+
+      # A failing and a permitted run with findings both upload their
+      # reports; the verify-artefacts job checks them. The other runs
+      # keep theirs on the runner, since artefact names must be unique.
+      - name: "Audit a vulnerable project [expected failure]"
+        id: vulnerable
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "locked"
+          artefact_name: "audit-vulnerable"
+
+      - name: "Audit with permit_fail"
+        id: permitted
+        uses: $/
+        with:
+          path_prefix: "locked"
+          permit_fail: "true"
+          artefact_name: "audit-vulnerable-permitted"
+
+      - name: "Audit with ignore_vulns"
+        id: ignored
+        uses: $/
+        with:
+          path_prefix: "locked"
+          ignore_vulns: "RUSTSEC-2020-0071"
+          artefact_upload: "false"
+          artefact_name: "audit-not-uploaded"
+
+      - name: "Audit with an allow-list"
+        id: allowed
+        uses: $/
+        with:
+          path_prefix: "locked"
+          allow_list_path: "audit-allow.txt"
+          artefact_upload: "false"
+
+      - name: "Deny unmaintained crates [expected failure]"
+        id: unmaintained
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "locked"
+          ignore_vulns: "RUSTSEC-2020-0071"
+          deny_warnings: "unmaintained"
+          artefact_upload: "false"
+
+      - name: "Require a missing Cargo.lock [expected failure]"
+        id: required
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "unlocked"
+          lockfile_required: "true"
+
+      - name: "Audit with a generated Cargo.lock"
+        id: generated
+        uses: $/
+        with:
+          path_prefix: "unlocked"
+          ignore_vulns: "RUSTSEC-2020-0071"
+          artefact_upload: "false"
+
+      - name: "Verify outcomes"
+        shell: bash
+        env:
+          VULNERABLE_STEP: ${{ steps.vulnerable.outcome }}
+          VULNERABLE_AUDIT: ${{ steps.vulnerable.outputs.audit_outcome }}
+          # yamllint disable-line rule:line-length
+          VULNERABLE_COUNT: ${{ steps.vulnerable.outputs.vulnerability_count }}
+          VULNERABLE_IDS: ${{ steps.vulnerable.outputs.vulnerability_ids }}
+          VULNERABLE_WARNINGS: ${{ steps.vulnerable.outputs.warning_count }}
+          PERMITTED_STEP: ${{ steps.permitted.outcome }}
+          PERMITTED_AUDIT: ${{ steps.permitted.outputs.audit_outcome }}
+          IGNORED_AUDIT: ${{ steps.ignored.outputs.audit_outcome }}
+          IGNORED_COUNT: ${{ steps.ignored.outputs.vulnerability_count }}
+          IGNORED_NAME: ${{ steps.ignored.outputs.artefact_name }}
+          IGNORED_REPORT: ${{ steps.ignored.outputs.report_path }}
+          ALLOWED_AUDIT: ${{ steps.allowed.outputs.audit_outcome }}
+          UNMAINTAINED_STEP: ${{ steps.unmaintained.outcome }}
+          UNMAINTAINED_AUDIT: ${{ steps.unmaintained.outputs.audit_outcome }}
+          REQUIRED_STEP: ${{ steps.required.outcome }}
+          REQUIRED_AUDIT: ${{ steps.required.outputs.audit_outcome }}
+          GENERATED_AUDIT: ${{ steps.generated.outputs.audit_outcome }}
+        run: |
+          # Verify outcomes
+          failed=0
+          expect() {
+            if [ "$2" != "$3" ]; then
+              echo "::error::$1: expected '$3', got '$2'"
+              failed=1
+            fi
+          }
+          expect "vulnerable step" "$VULNERABLE_STEP" failure
+          expect "vulnerable audit_outcome" "$VULNERABLE_AUDIT" failed
+          expect "vulnerable vulnerability_count" "$VULNERABLE_COUNT" 1
+          expect "vulnerable vulnerability_ids" "$VULNERABLE_IDS" \
+            RUSTSEC-2020-0071
+          expect "vulnerable warning_count" "$VULNERABLE_WARNINGS" 1
+          expect "permitted step" "$PERMITTED_STEP" success
+          expect "permitted audit_outcome" "$PERMITTED_AUDIT" failed
+          expect "ignored audit_outcome" "$IGNORED_AUDIT" passed
+          expect "ignored vulnerability_count" "$IGNORED_COUNT" 0
+          # artefact_upload 'false': reports kept, nothing uploaded.
+          expect "ignored artefact_name" "$IGNORED_NAME" ""
+          if [ ! -s "$IGNORED_REPORT" ]; then
+            echo "::error::ignored kept no report on the runner"
+            failed=1
+          fi
+          expect "allowed audit_outcome" "$ALLOWED_AUDIT" passed
+          expect "unmaintained step" "$UNMAINTAINED_STEP" failure
+          expect "unmaintained audit_outcome" "$UNMAINTAINED_AUDIT" failed
+          expect "required step" "$REQUIRED_STEP" failure
+          expect "required audit_outcome" "$REQUIRED_AUDIT" failed
+          expect "generated audit_outcome" "$GENERATED_AUDIT" passed
+          if [ ! -f unlocked/Cargo.lock ]; then
+            echo "::error::the action did not generate unlocked/Cargo.lock"
+            failed=1
+          fi
+          exit "$failed"
+
+  # The action's own upload step, proven from a separate job: every
+  # artefact the runs above should upload, and nothing else.
+  verify-artefacts:
+    name: "Verify uploaded reports"
+    needs: [test-rust-project, test-vulnerable-fixture]
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 10
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
+        with:
+          config: '@538904e241556d101fb908b50e2a2965fa0346cf'  # v0.16.6
+
+      - name: "Harden runner (block)"
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed  # v2.22.0
+        with:
+          egress-policy: "block"
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Download the report artefacts"
+        # yamllint disable-line rule:line-length
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: "audit-*"
+          path: "artefacts"
+
+      - name: "Verify the reports"
+        shell: bash
+        run: |
+          # Verify the reports
+          set -euo pipefail
+          cd artefacts
+          failed=0
+          check() {
+            if ! "${@:2}" > /dev/null 2>&1; then
+              echo "::error::$1"
+              failed=1
+            fi
+          }
+          names="$(find . -mindepth 1 -maxdepth 1 -printf '%f\n' \
+            | LC_ALL=C sort | paste -s -d ' ' -)"
+          expected="audit-test-rust-project audit-test-rust-project-deny"
+          expected="$expected audit-test-rust-project-licenses"
+          expected="$expected audit-vulnerable audit-vulnerable-permitted"
+          check "unexpected artefacts: $names" test "$names" = "$expected"
+          for file in audit-test-rust-project/cargo-audit.json \
+            audit-test-rust-project-deny/cargo-audit.json \
+            audit-test-rust-project-deny/cargo-deny.jsonl \
+            audit-test-rust-project-deny/cargo-deny.txt \
+            audit-test-rust-project-licenses/cargo-audit.json \
+            audit-test-rust-project-licenses/cargo-deny.jsonl \
+            audit-test-rust-project-licenses/cargo-deny.txt \
+            audit-vulnerable/cargo-audit.json \
+            audit-vulnerable-permitted/cargo-audit.json; do
+            check "missing or empty: $file" test -s "$file"
+          done
+          check "clean report expected" jq -e '.vulnerabilities.count == 0' \
+            audit-test-rust-project/cargo-audit.json
+          check "licenses failure expected" jq -e -s \
+            'map(select(.type == "summary"))[-1].fields.licenses.errors > 0' \
+            audit-test-rust-project-licenses/cargo-deny.jsonl
+          for dir in audit-vulnerable audit-vulnerable-permitted; do
+            check "$dir: RUSTSEC-2020-0071 expected" jq -e \
+              '[.vulnerabilities.list[].advisory.id]
+                == ["RUSTSEC-2020-0071"]' \
+              "$dir/cargo-audit.json"
+          done
+          exit "$failed"
+
+  test-invalid-inputs:
+    name: "Reject invalid inputs"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
+        with:
+          config: '@538904e241556d101fb908b50e2a2965fa0346cf'  # v0.16.6
+
+      - name: "Harden runner (block)"
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed  # v2.22.0
+        with:
+          egress-policy: "block"
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Checkout repository"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # permit_fail never covers invalid inputs.
+      - name: "Non-boolean permit_fail [expected failure]"
+        id: boolean
+        continue-on-error: true
+        uses: $/
+        with:
+          permit_fail: "yes"
+
+      - name: "GHSA alias in ignore_vulns [expected failure]"
+        id: alias
+        continue-on-error: true
+        uses: $/
+        with:
+          ignore_vulns: "GHSA-wcg3-cvx6-7396"
+          permit_fail: "true"
+
+      - name: "path_prefix outside the workspace [expected failure]"
+        id: outside
+        continue-on-error: true
+        uses: $/
+        with:
+          path_prefix: "../"
+
+      - name: "Verify outcomes"
+        shell: bash
+        env:
+          BOOLEAN_STEP: ${{ steps.boolean.outcome }}
+          BOOLEAN_AUDIT: ${{ steps.boolean.outputs.audit_outcome }}
+          ALIAS_STEP: ${{ steps.alias.outcome }}
+          ALIAS_AUDIT: ${{ steps.alias.outputs.audit_outcome }}
+          OUTSIDE_STEP: ${{ steps.outside.outcome }}
+          OUTSIDE_AUDIT: ${{ steps.outside.outputs.audit_outcome }}
+        run: |
+          # Verify outcomes
+          failed=0
+          for pair in "boolean:$BOOLEAN_STEP:$BOOLEAN_AUDIT" \
+            "alias:$ALIAS_STEP:$ALIAS_AUDIT" \
+            "outside:$OUTSIDE_STEP:$OUTSIDE_AUDIT"; do
+            if [ "${pair#*:}" != "failure:failed" ]; then
+              echo "::error::${pair%%:*}: expected failure:failed," \
+                "got ${pair#*:}"
+              failed=1
+            fi
+          done
+          exit "$failed"
