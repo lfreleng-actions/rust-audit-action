@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+
+version = 1
+
+# Tool output captured for the unit tests. JSON carries no comments, so
+# the licence lives here. Advisory text in the captures was replaced
+# with placeholder wording.
+[[annotations]]
+path = ["tests/fixtures/*.json", "tests/fixtures/*.jsonl"]
+SPDX-FileCopyrightText = "2026 The Linux Foundation"
+SPDX-License-Identifier = "Apache-2.0"
