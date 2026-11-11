@@ -30,7 +30,7 @@ jobs:
       # Load the egress allow-list from the organisation's .github
       # repository as $CONNECTION_ALLOW_LIST for harden-runner.
       # yamllint disable-line rule:line-length
-      - uses: lfreleng-actions/harden-runner-block-action@2fed66c9c36c4687c31ca349b925b81ec629673f  # v0.15.0
+      - uses: lfreleng-actions/harden-runner-block-action@bd83615a22b57835798adcb9ce753161464dfb40  # v0.16.2
         with:
           config: '@6d4a65c5601afd6c2fbe52bda4b0024b132f265d'  # v0.19.0
 
@@ -69,7 +69,7 @@ jobs:
     timeout-minutes: 20
     steps:
       # yamllint disable-line rule:line-length
-      - uses: lfreleng-actions/harden-runner-block-action@2fed66c9c36c4687c31ca349b925b81ec629673f  # v0.15.0
+      - uses: lfreleng-actions/harden-runner-block-action@bd83615a22b57835798adcb9ce753161464dfb40  # v0.16.2
         with:
           config: '@6d4a65c5601afd6c2fbe52bda4b0024b132f265d'  # v0.19.0
 
@@ -287,7 +287,7 @@ jobs:
     timeout-minutes: 25
     steps:
       # yamllint disable-line rule:line-length
-      - uses: lfreleng-actions/harden-runner-block-action@2fed66c9c36c4687c31ca349b925b81ec629673f  # v0.15.0
+      - uses: lfreleng-actions/harden-runner-block-action@bd83615a22b57835798adcb9ce753161464dfb40  # v0.16.2
         with:
           config: '@6d4a65c5601afd6c2fbe52bda4b0024b132f265d'  # v0.19.0
 
@@ -462,7 +462,7 @@ jobs:
     timeout-minutes: 10
     steps:
       # yamllint disable-line rule:line-length
-      - uses: lfreleng-actions/harden-runner-block-action@2fed66c9c36c4687c31ca349b925b81ec629673f  # v0.15.0
+      - uses: lfreleng-actions/harden-runner-block-action@bd83615a22b57835798adcb9ce753161464dfb40  # v0.16.2
         with:
           config: '@6d4a65c5601afd6c2fbe52bda4b0024b132f265d'  # v0.19.0
 
@@ -532,7 +532,7 @@ jobs:
     timeout-minutes: 10
     steps:
       # yamllint disable-line rule:line-length
-      - uses: lfreleng-actions/harden-runner-block-action@2fed66c9c36c4687c31ca349b925b81ec629673f  # v0.15.0
+      - uses: lfreleng-actions/harden-runner-block-action@bd83615a22b57835798adcb9ce753161464dfb40  # v0.16.2
         with:
           config: '@6d4a65c5601afd6c2fbe52bda4b0024b132f265d'  # v0.19.0
 
