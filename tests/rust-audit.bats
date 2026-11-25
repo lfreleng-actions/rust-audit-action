@@ -653,15 +653,111 @@ assert_no_injected_command() {
 
 ### Report artefacts ###
 
+# Prevent downgrades below the release tested by the report upload step.
+readonly min_upload_artifact_version=v7.0.2
+readonly upload_artifact_uses="^[[:blank:]]*(-[[:blank:]]+)?uses[[:blank:]]*:[[:blank:]]*(['\"]?)actions/upload-artifact"
+readonly upload_artifact_name="${upload_artifact_uses}([@'\"[:blank:]]|$)"
+
+check_upload_artifact_pins() {
+  local file="$1" calls call use sha version first_sha='' failed=0
+  local LC_ALL=C
+  local number='(0|[1-9][0-9]*)'
+  local pin="${upload_artifact_uses}@([0-9a-f]{40})(['\"]?)[[:blank:]]+#[[:blank:]]+(v${number}\.${number}\.${number})[[:blank:]]*$"
+
+  if ! calls="$(grep -nE "$upload_artifact_name" "$file")"; then
+    printf '%s: no actions/upload-artifact calls found\n' "$file"
+    return 1
+  fi
+
+  while IFS= read -r call; do
+    use="${call#*:}"
+    if [[ ! $use =~ $pin || ${BASH_REMATCH[2]} != "${BASH_REMATCH[4]}" ]]; then
+      printf '%s:%s: expected a full lowercase commit SHA and # vX.Y.Z\n' "$file" "${call%%:*}"
+      failed=1
+      continue
+    fi
+    sha="${BASH_REMATCH[3]}"
+    version="${BASH_REMATCH[5]}"
+    if [[ $(printf '%s\n' "$min_upload_artifact_version" "$version" | sort -V) != "$min_upload_artifact_version"$'\n'"$version" ]]; then
+      printf '%s:%s: %s is below the minimum %s\n' "$file" "${call%%:*}" "$version" "$min_upload_artifact_version"
+      failed=1
+    fi
+    if [[ -z $first_sha ]]; then
+      first_sha="$sha"
+    elif [[ $sha != "$first_sha" ]]; then
+      printf '%s:%s: actions/upload-artifact pins disagree\n' "$file" "${call%%:*}"
+      failed=1
+    fi
+  done <<< "$calls"
+
+  if (( failed )); then
+    while IFS= read -r call; do
+      printf '%s:%s\n' "$file" "$call"
+    done <<< "$calls"
+    return 1
+  fi
+}
+
 @test "action.yaml uploads the reports after failures too, when told to" {
   local step
-  step="$(awk '/- name: "Upload audit reports"/ { on = 1 } on' "$action_file")"
+  step="$(awk 'on && /^    - / { exit } /^    - name: "Upload audit reports"$/ { on = 1 } on' "$action_file")"
   grep -qxF "      if: \${{ !cancelled() && steps.audit.outputs.upload_reports == 'true' }}" <<< "$step"
-  grep -qxF '      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2' <<< "$step"
+  grep -qE "$upload_artifact_name" <<< "$step"
   grep -qxF "      continue-on-error: \${{ inputs.permit_fail == 'true' }}" <<< "$step"
   grep -qxF "        name: \${{ steps.audit.outputs.artefact_name }}" <<< "$step"
   grep -qxF "        path: \${{ steps.audit.outputs.artefact_path }}" <<< "$step"
   grep -qxF '        if-no-files-found: warn' <<< "$step"
+}
+
+@test "action.yaml pins upload-artifact consistently at or above the floor" {
+  check_upload_artifact_pins "$action_file"
+}
+
+rewrite_upload_artifact_pins() {
+  sed -E "s|^([[:blank:]]*uses: actions/upload-artifact@).*|\1$1|" \
+    "$action_file" > "$2"
+  grep -qF "actions/upload-artifact@$1" "$2"
+}
+
+@test "upload-artifact pin check accepts a bump and reports disagreeing calls" {
+  local copy="$workdir/action.yaml" mismatch="$workdir/disagree.yaml" sha other_sha
+  # Synthetic SHAs and a newer version stand in for a Dependabot bump.
+  printf -v sha '%040x' 10
+  printf -v other_sha '%040x' 11
+  rewrite_upload_artifact_pins "$sha # v7.0.10" "$copy"
+  check_upload_artifact_pins "$copy"
+
+  printf '    - uses: actions/upload-artifact@%s # v7.0.10\n' "$sha" >> "$copy"
+  check_upload_artifact_pins "$copy"
+
+  local second_line first_line
+  second_line="$(wc -l < "$copy")"
+  sed "\$s/@$sha/@$other_sha/" "$copy" > "$mismatch"
+  run check_upload_artifact_pins "$mismatch"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"actions/upload-artifact pins disagree"* ]]
+  first_line="$(grep -nF "actions/upload-artifact@$sha" "$mismatch")"
+  [[ "$output" == *"$mismatch:$first_line"* ]]
+  [[ "$output" == *"$mismatch:$second_line:    - uses: actions/upload-artifact@$other_sha # v7.0.10"* ]]
+}
+
+@test "upload-artifact pin check rejects malformed pins and versions below the floor" {
+  local copy="$workdir/action.yaml" sha ref
+  # Synthetic pins exercise bad refs and a release below the floor.
+  printf -v sha '%040x' 10
+  for ref in 'v7.0.10 # v7.0.10' 'main # v7.0.10' \
+    "${sha: -7} # v7.0.10" "${sha^^} # v7.0.10" "$sha"; do
+    rewrite_upload_artifact_pins "$ref" "$copy"
+    run check_upload_artifact_pins "$copy"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"expected a full lowercase commit SHA and # vX.Y.Z"* ]]
+    [[ "$output" == *"$copy:"*"actions/upload-artifact@$ref"* ]]
+  done
+
+  rewrite_upload_artifact_pins "$sha # v7.0.1" "$copy"
+  run check_upload_artifact_pins "$copy"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"v7.0.1 is below the minimum $min_upload_artifact_version"* ]]
 }
 
 @test "cargo-deny's output is kept as JSON lines and as readable text" {
