@@ -47,13 +47,53 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: "Enforce HTTPS for APT"
+        id: apt-https
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/apt-https-enforce-action@107838afeb79d37aeddb2b7f227f80f51df25180  # v0.0.1
+        with:
+          http_fallback_override: ${{ vars.APT_HTTP_FALLBACK }}
+
       - name: "Install bats"
         shell: bash
         run: |
           # Install bats
-          sudo apt-get update -qq
           sudo apt-get install -y -qq bats
           bats --version
+
+      - name: "Verify APT used HTTPS"
+        shell: bash
+        env:
+          APT_TRANSPORT: ${{ steps.apt-https.outputs.transport }}
+          APT_FALLBACK_ENABLED: ${{ steps.apt-https.outputs.fallback_enabled }}
+        run: |
+          echo "transport=${APT_TRANSPORT}"
+          echo "fallback_enabled=${APT_FALLBACK_ENABLED}"
+
+          [[ "${APT_TRANSPORT}" == "https" ]]
+          [[ "${APT_FALLBACK_ENABLED}" == "false" ]]
+
+          source_files=(
+            /etc/apt/sources.list
+            /etc/apt/sources.list.d/*.list
+            /etc/apt/sources.list.d/*.sources
+          )
+          for source_file in "${source_files[@]}"; do
+            [[ -f "${source_file}" ]] || continue
+            http_sources="$(awk '
+              {
+                sub(/#.*/, "")
+                if (tolower($0) ~ /http:\/\//) {
+                  print FILENAME ":" FNR ": " $0
+                }
+              }
+            ' "${source_file}")"
+            if [[ -n "${http_sources}" ]]; then
+              printf '%s\n' "${http_sources}" >&2
+              echo "Found an HTTP APT source." >&2
+              exit 1
+            fi
+          done
 
       - name: "Run bats tests"
         shell: bash
